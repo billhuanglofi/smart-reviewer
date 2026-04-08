@@ -1,13 +1,57 @@
 # 🤖 Smart Reviewer
 
-AI-powered pull request review, description, and improvement suggestions — delivered as a GitHub Action.
+AI-powered pull request review, description, and improvement suggestions — available as a **local CLI tool** and a GitHub Action.
 
 Smart Reviewer analyses your PR diff with a large-language model and posts
 structured feedback directly on the pull request. It ships three tools that
 can run automatically on every PR **or** on-demand via slash commands in
 comments.
 
-## Quick Start
+## Local CLI Usage
+
+### Installation
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+### Running
+
+Set the required environment variables:
+
+```bash
+export GITHUB_TOKEN="your-github-token"
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+Run against any GitHub pull request:
+
+```bash
+# Run all tools (review + describe + improve)
+smart-reviewer https://github.com/owner/repo/pull/42
+
+# Run specific tools only
+smart-reviewer --review https://github.com/owner/repo/pull/42
+smart-reviewer --describe --improve https://github.com/owner/repo/pull/42
+
+# Print output to stdout only (don't post comments on the PR)
+smart-reviewer --no-publish https://github.com/owner/repo/pull/42
+
+# Override the LLM model
+smart-reviewer --model gpt-3.5-turbo https://github.com/owner/repo/pull/42
+
+# Enable verbose logging
+smart-reviewer -v https://github.com/owner/repo/pull/42
+```
+
+You can also run it as a Python module:
+
+```bash
+python -m smart_reviewer https://github.com/owner/repo/pull/42
+```
+
+## GitHub Action Quick Start
 
 Add the following workflow to `.github/workflows/smart-reviewer.yml`:
 
