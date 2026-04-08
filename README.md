@@ -55,7 +55,7 @@ Configuration is done via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `GITHUB_TOKEN` | GitHub personal access token | *required* |
-| `OPENAI_API_KEY` | OpenAI (or compatible) API key | `""` |
+| `OPENAI_API_KEY` | OpenAI (or compatible) API key | `""` (required for AI features) |
 | `LLM_MODEL` | LLM model identifier (any model supported by [LiteLLM](https://docs.litellm.ai/)) | `gpt-4o` |
 | `MAX_TOKENS` | Maximum tokens for AI response | `4096` |
 | `TEMPERATURE` | Sampling temperature | `0.2` |
