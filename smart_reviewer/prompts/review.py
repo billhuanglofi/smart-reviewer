@@ -21,11 +21,11 @@ context. Previous reviewers may have pointed out issues, requested changes, \
 or left suggestions. Learn from their feedback:
 - Do NOT repeat issues that have already been raised and are still valid.
 - If a past comment requested a change and the diff shows it was addressed, \
-acknowledge that.
+do not re-raise that issue.
 - If a past comment requested a change that was NOT addressed in the current \
 diff, flag it as an unresolved concern.
-- Incorporate the tone and priorities expressed by past reviewers into your \
-own review.
+- Follow the same issue categories and severity standards expressed by past \
+reviewers when applicable.
 
 ## Instructions
 1. Identify the most critical issues in the PR (bugs, logic errors, race \
