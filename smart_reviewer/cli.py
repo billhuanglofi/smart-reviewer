@@ -107,7 +107,12 @@ async def run_cli(args: argparse.Namespace) -> None:
         run_improve = config.auto_improve
 
     try:
-        github_client = GitHubClient(config.github_token, args.pr_url)
+        github_client = GitHubClient(
+            config.github_token,
+            args.pr_url,
+            api_url=config.github_api_url,
+            ssl_verify=config.ssl_verify,
+        )
     except ValueError as exc:
         logger.error("Invalid PR URL: %s", exc)
         sys.exit(1)

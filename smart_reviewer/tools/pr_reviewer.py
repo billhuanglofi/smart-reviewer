@@ -51,6 +51,11 @@ class PRReviewer:
         diff = self.github_client.get_pr_diff()
         self.github_client.get_pr_files()  # pre-fetch for context
 
+        past_reviews: list[dict[str, Any]] = []
+        if self.config.include_past_reviews:
+            past_reviews = self.github_client.get_past_reviews()
+            logger.info("Fetched %d past reviews for context", len(past_reviews))
+
         env = Environment(undefined=StrictUndefined)
         system_prompt = REVIEW_SYSTEM_PROMPT
         user_prompt = env.from_string(REVIEW_USER_PROMPT).render(
@@ -58,6 +63,7 @@ class PRReviewer:
             branch=pr_info["branch"],
             description=pr_info["body"],
             diff=diff,
+            past_reviews=past_reviews,
             num_max_findings=self.config.num_max_findings,
             require_security_review=self.config.require_security_review,
             require_effort_estimation=self.config.require_effort_estimation,

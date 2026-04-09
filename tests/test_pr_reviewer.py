@@ -102,6 +102,7 @@ class TestPRReviewerRun:
         }
         mock_gh.get_pr_diff.return_value = "diff content"
         mock_gh.get_pr_files.return_value = []
+        mock_gh.get_past_reviews.return_value = []
 
         mock_ai = mock.MagicMock()
         mock_ai.chat_completion = mock.AsyncMock(return_value=SAMPLE_YAML)
@@ -123,6 +124,7 @@ class TestPRReviewerRun:
         }
         mock_gh.get_pr_diff.return_value = ""
         mock_gh.get_pr_files.return_value = []
+        mock_gh.get_past_reviews.return_value = []
 
         mock_ai = mock.MagicMock()
         mock_ai.chat_completion = mock.AsyncMock(return_value=SAMPLE_YAML)
@@ -131,3 +133,69 @@ class TestPRReviewerRun:
         await reviewer.run()
 
         mock_gh.publish_persistent_comment.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_past_reviews_included_in_prompt(self):
+        config = _make_config(publish_output=False, include_past_reviews=True)
+        mock_gh = mock.MagicMock()
+        mock_gh.get_pr_info.return_value = {
+            "title": "T", "body": "", "branch": "b",
+            "base_branch": "m", "author": "a", "created_at": "t",
+        }
+        mock_gh.get_pr_diff.return_value = "diff"
+        mock_gh.get_pr_files.return_value = []
+        mock_gh.get_past_reviews.return_value = [
+            {
+                "reviewer": "bob",
+                "state": "CHANGES_REQUESTED",
+                "body": "Please fix the typo.",
+                "submitted_at": "2025-03-15T10:00:00",
+                "comments": [
+                    {
+                        "path": "src/main.py",
+                        "body": "Typo on line 5",
+                        "diff_hunk": "@@",
+                        "line": 5,
+                        "in_reply_to_id": None,
+                    }
+                ],
+            }
+        ]
+
+        mock_ai = mock.MagicMock()
+        mock_ai.chat_completion = mock.AsyncMock(return_value=SAMPLE_YAML)
+
+        reviewer = PRReviewer(config, mock_gh, mock_ai)
+        await reviewer.run()
+
+        # Verify past reviews were fetched
+        mock_gh.get_past_reviews.assert_called_once()
+
+        # Verify the prompt sent to AI contains the past review content
+        call_args = mock_ai.chat_completion.call_args
+        user_prompt = call_args[0][1]
+        assert "bob" in user_prompt
+        assert "CHANGES_REQUESTED" in user_prompt
+        assert "Please fix the typo" in user_prompt
+        assert "Typo on line 5" in user_prompt
+        assert "src/main.py" in user_prompt
+
+    @pytest.mark.asyncio
+    async def test_past_reviews_skipped_when_disabled(self):
+        config = _make_config(publish_output=False, include_past_reviews=False)
+        mock_gh = mock.MagicMock()
+        mock_gh.get_pr_info.return_value = {
+            "title": "T", "body": "", "branch": "b",
+            "base_branch": "m", "author": "a", "created_at": "t",
+        }
+        mock_gh.get_pr_diff.return_value = "diff"
+        mock_gh.get_pr_files.return_value = []
+
+        mock_ai = mock.MagicMock()
+        mock_ai.chat_completion = mock.AsyncMock(return_value=SAMPLE_YAML)
+
+        reviewer = PRReviewer(config, mock_gh, mock_ai)
+        await reviewer.run()
+
+        # Verify past reviews were NOT fetched
+        mock_gh.get_past_reviews.assert_not_called()

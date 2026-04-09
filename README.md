@@ -57,12 +57,15 @@ Configuration is done via environment variables:
 | `GITHUB_TOKEN` | GitHub personal access token | *required* |
 | `OPENAI_API_KEY` | OpenAI (or compatible) API key | `""` (required for AI features) |
 | `LLM_MODEL` | LLM model identifier (any model supported by [LiteLLM](https://docs.litellm.ai/)) | `gpt-4o` |
+| `LLM_API_BASE` | Custom API base URL for self-hosted or corporate LLM endpoints | `""` |
 | `MAX_TOKENS` | Maximum tokens for AI response | `4096` |
 | `TEMPERATURE` | Sampling temperature | `0.2` |
 | `EXTRA_INSTRUCTIONS` | Additional instructions appended to every prompt | `""` |
 | `NUM_MAX_FINDINGS` | Maximum number of findings in the review | `3` |
 | `REQUIRE_SECURITY_REVIEW` | Include security concerns section | `true` |
 | `REQUIRE_EFFORT_ESTIMATION` | Include effort estimation badge | `true` |
+| `GITHUB_API_URL` | GitHub API base URL for GitHub Enterprise Server | `""` (auto-detected) |
+| `SSL_VERIFY` | Verify SSL certificates (set to `false` for corporate proxies) | `true` |
 
 ## Tools
 
@@ -101,6 +104,70 @@ smart-reviewer --model azure/my-deployment-name https://github.com/owner/repo/pu
 
 Set the appropriate API key environment variable for your provider (e.g.
 `ANTHROPIC_API_KEY`, `AZURE_API_KEY`).
+
+## Corporate / Self-Hosted Setup
+
+Smart Reviewer is designed to work on company laptops with restricted
+internet access. You can point it at internal services instead of public
+cloud APIs.
+
+### GitHub Enterprise Server
+
+If your organisation uses GitHub Enterprise Server, just pass the PR URL
+as-is — the tool auto-detects the API endpoint from the hostname:
+
+```bash
+# Auto-detects https://github.example.com/api/v3
+smart-reviewer https://github.example.com/myorg/myrepo/pull/10
+```
+
+You can also set an explicit API URL:
+
+```bash
+export GITHUB_API_URL="https://github.example.com/api/v3"
+```
+
+### Local / Self-Hosted LLM
+
+Run a fully offline review with a local model (e.g. via
+[Ollama](https://ollama.com)):
+
+```bash
+# Start Ollama locally
+ollama serve
+
+# Point Smart Reviewer at the local endpoint
+export LLM_API_BASE="http://localhost:11434"
+export LLM_MODEL="ollama/llama3"
+export OPENAI_API_KEY="not-needed"
+
+smart-reviewer --no-publish https://github.com/owner/repo/pull/42
+```
+
+Or point at any OpenAI-compatible internal endpoint:
+
+```bash
+export LLM_API_BASE="https://internal-llm.corp.com/v1"
+export LLM_MODEL="gpt-4o"
+smart-reviewer https://github.com/owner/repo/pull/42
+```
+
+### SSL / Corporate Proxy
+
+If your company laptop uses a custom certificate authority or an
+intercepting proxy, you may need to disable SSL verification:
+
+```bash
+export SSL_VERIFY=false
+```
+
+You can also set standard proxy environment variables which are honoured
+by the underlying HTTP libraries:
+
+```bash
+export HTTPS_PROXY="http://proxy.corp.com:8080"
+export HTTP_PROXY="http://proxy.corp.com:8080"
+```
 
 ## Development
 

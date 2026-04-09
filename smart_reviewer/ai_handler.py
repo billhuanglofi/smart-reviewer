@@ -25,6 +25,9 @@ class AIHandler:
             litellm.api_key = config.openai_api_key
         litellm.drop_params = True
 
+        if not config.ssl_verify:
+            litellm.ssl_verify = False
+
     async def chat_completion(
         self,
         system: str,
@@ -51,13 +54,20 @@ class AIHandler:
             {"role": "user", "content": user},
         ]
 
+        kwargs: dict[str, object] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": self.config.max_tokens,
+        }
+
+        # Per-request api_base (takes precedence over litellm.api_base when
+        # the caller has configured a custom endpoint).
+        if self.config.llm_api_base:
+            kwargs["api_base"] = self.config.llm_api_base
+
         try:
-            response = await litellm.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=self.config.max_tokens,
-            )
+            response = await litellm.acompletion(**kwargs)
             text: str = response.choices[0].message.content
             logger.debug("AI response length: %d characters", len(text))
             return text
