@@ -17,14 +17,27 @@ class GitHubClient:
     Parameters:
         token: GitHub personal access token or ``GITHUB_TOKEN``.
         pr_url: Full URL to the pull request, e.g.
-            ``https://github.com/owner/repo/pull/42``.
+            ``https://github.com/owner/repo/pull/42`` or a GitHub Enterprise
+            URL like ``https://github.example.com/owner/repo/pull/42``.
+        api_url: Optional GitHub API base URL for GitHub Enterprise Server.
+            For example ``https://github.example.com/api/v3``.  When empty
+            the client auto-detects: if *pr_url* points at ``github.com`` the
+            public API is used, otherwise ``https://<host>/api/v3`` is assumed.
+        ssl_verify: Whether to verify SSL certificates.  Set to ``False`` when
+            behind a corporate proxy with custom CA certificates.
     """
 
     _URL_PATTERN = re.compile(
-        r"https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pull/(?P<number>\d+)"
+        r"https?://(?P<host>[^/]+)/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pull/(?P<number>\d+)"
     )
 
-    def __init__(self, token: str, pr_url: str) -> None:
+    def __init__(
+        self,
+        token: str,
+        pr_url: str,
+        api_url: str = "",
+        ssl_verify: bool = True,
+    ) -> None:
         self.token = token
         self.pr_url = pr_url
 
@@ -32,11 +45,27 @@ class GitHubClient:
         if not match:
             raise ValueError(f"Invalid PR URL: {pr_url}")
 
+        self.host = match.group("host")
         self.owner = match.group("owner")
         self.repo_name = match.group("repo")
         self.pr_number = int(match.group("number"))
 
-        self._github = Github(token)
+        # Determine the GitHub API endpoint.
+        if api_url:
+            base_url = api_url.rstrip("/")
+        elif self.host.lower() in ("github.com", "www.github.com"):
+            base_url = ""  # use PyGithub default (https://api.github.com)
+        else:
+            # GitHub Enterprise Server convention
+            base_url = f"https://{self.host}/api/v3"
+
+        kwargs: dict[str, Any] = {}
+        if base_url:
+            kwargs["base_url"] = base_url
+        if not ssl_verify:
+            kwargs["verify"] = False
+
+        self._github = Github(token, **kwargs)
         self._repo = self._github.get_repo(f"{self.owner}/{self.repo_name}")
         self._pr = self._repo.get_pull(self.pr_number)
 

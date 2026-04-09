@@ -24,6 +24,9 @@ class TestFromEnv:
         assert cfg.auto_review is True
         assert cfg.auto_describe is True
         assert cfg.include_past_reviews is True
+        assert cfg.github_api_url == ""
+        assert cfg.llm_api_base == ""
+        assert cfg.ssl_verify is True
 
     def test_full_config(self):
         env = {
@@ -41,6 +44,9 @@ class TestFromEnv:
             "REQUIRE_EFFORT_ESTIMATION": "false",
             "PUBLISH_OUTPUT": "1",
             "INCLUDE_PAST_REVIEWS": "false",
+            "GITHUB_API_URL": "https://github.example.com/api/v3",
+            "LLM_API_BASE": "http://localhost:11434",
+            "SSL_VERIFY": "false",
         }
         with mock.patch.dict(os.environ, env, clear=True):
             cfg = ReviewConfig.from_env()
@@ -57,6 +63,9 @@ class TestFromEnv:
         assert cfg.require_effort_estimation is False
         assert cfg.publish_output is True
         assert cfg.include_past_reviews is False
+        assert cfg.github_api_url == "https://github.example.com/api/v3"
+        assert cfg.llm_api_base == "http://localhost:11434"
+        assert cfg.ssl_verify is False
 
     def test_missing_github_token_raises(self):
         with mock.patch.dict(os.environ, {}, clear=True):

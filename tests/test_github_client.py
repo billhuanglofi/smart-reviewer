@@ -22,14 +22,90 @@ class TestURLParsing:
                 "https://github.com/owner/repo/pull/42"
             )
             assert match is not None
+            assert match.group("host") == "github.com"
             assert match.group("owner") == "owner"
             assert match.group("repo") == "repo"
             assert match.group("number") == "42"
 
+    def test_github_enterprise_url(self):
+        with mock.patch("smart_reviewer.github_client.Github"):
+            client = GitHubClient.__new__(GitHubClient)
+            match = client._URL_PATTERN.match(
+                "https://github.example.com/myorg/myrepo/pull/99"
+            )
+            assert match is not None
+            assert match.group("host") == "github.example.com"
+            assert match.group("owner") == "myorg"
+            assert match.group("repo") == "myrepo"
+            assert match.group("number") == "99"
+
     def test_invalid_url(self):
         with mock.patch("smart_reviewer.github_client.Github"):
             with pytest.raises(ValueError, match="Invalid PR URL"):
-                GitHubClient("tok", "https://not-github.com/foo/bar")
+                GitHubClient("tok", "https://not-a-pr-url/foo")
+
+
+# ---------------------------------------------------------------------------
+# GitHub Enterprise / custom API URL construction
+# ---------------------------------------------------------------------------
+
+class TestGitHubEnterprise:
+    def test_public_github_uses_default_api(self):
+        """github.com URLs should not pass base_url to PyGithub."""
+        with mock.patch("smart_reviewer.github_client.Github") as MockGithub:
+            mock_github_instance = MockGithub.return_value
+            mock_repo = mock.MagicMock()
+            mock_github_instance.get_repo.return_value = mock_repo
+            mock_repo.get_pull.return_value = mock.MagicMock()
+            GitHubClient("tok", "https://github.com/owner/repo/pull/1")
+            # Should be called with just the token (no base_url)
+            MockGithub.assert_called_once_with("tok")
+
+    def test_ghe_auto_detects_api_url(self):
+        """Non-github.com hosts should auto-detect the GHE API URL."""
+        with mock.patch("smart_reviewer.github_client.Github") as MockGithub:
+            mock_github_instance = MockGithub.return_value
+            mock_repo = mock.MagicMock()
+            mock_github_instance.get_repo.return_value = mock_repo
+            mock_repo.get_pull.return_value = mock.MagicMock()
+            GitHubClient(
+                "tok",
+                "https://github.example.com/myorg/myrepo/pull/5",
+            )
+            MockGithub.assert_called_once_with(
+                "tok", base_url="https://github.example.com/api/v3"
+            )
+
+    def test_explicit_api_url_overrides(self):
+        """An explicit api_url should be used even for github.com."""
+        with mock.patch("smart_reviewer.github_client.Github") as MockGithub:
+            mock_github_instance = MockGithub.return_value
+            mock_repo = mock.MagicMock()
+            mock_github_instance.get_repo.return_value = mock_repo
+            mock_repo.get_pull.return_value = mock.MagicMock()
+            GitHubClient(
+                "tok",
+                "https://github.com/owner/repo/pull/1",
+                api_url="https://custom-proxy.corp.com/github/api/v3",
+            )
+            MockGithub.assert_called_once_with(
+                "tok",
+                base_url="https://custom-proxy.corp.com/github/api/v3",
+            )
+
+    def test_ssl_verify_false_passed(self):
+        """ssl_verify=False should be forwarded to PyGithub."""
+        with mock.patch("smart_reviewer.github_client.Github") as MockGithub:
+            mock_github_instance = MockGithub.return_value
+            mock_repo = mock.MagicMock()
+            mock_github_instance.get_repo.return_value = mock_repo
+            mock_repo.get_pull.return_value = mock.MagicMock()
+            GitHubClient(
+                "tok",
+                "https://github.com/owner/repo/pull/1",
+                ssl_verify=False,
+            )
+            MockGithub.assert_called_once_with("tok", verify=False)
 
 
 # ---------------------------------------------------------------------------
