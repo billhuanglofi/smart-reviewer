@@ -28,9 +28,6 @@ class AIHandler:
         if not config.ssl_verify:
             litellm.ssl_verify = False
 
-        if config.llm_api_base:
-            litellm.api_base = config.llm_api_base
-
     async def chat_completion(
         self,
         system: str,
