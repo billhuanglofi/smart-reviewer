@@ -90,6 +90,51 @@ class GitHubClient:
         """Return the language breakdown of the repository."""
         return self._repo.get_languages()
 
+    def get_past_reviews(self) -> list[dict[str, Any]]:
+        """Return past reviews with their inline comment threads.
+
+        Each entry represents a submitted review and includes:
+        - ``reviewer``: GitHub login of the reviewer.
+        - ``state``: Review state (e.g. ``APPROVED``, ``CHANGES_REQUESTED``).
+        - ``body``: Top-level review body (may be empty).
+        - ``submitted_at``: ISO-formatted timestamp.
+        - ``comments``: List of inline review comments belonging to this
+          review, each with ``path``, ``body``, ``diff_hunk``, ``line``,
+          and ``in_reply_to_id``.
+        """
+        reviews: list[dict[str, Any]] = []
+        # Build a lookup of review comments grouped by review id
+        review_comments_by_id: dict[int, list[dict[str, Any]]] = {}
+        for rc in self._pr.get_review_comments():
+            rid = rc.pull_request_review_id
+            if rid is None:
+                continue
+            comment_data = {
+                "path": rc.path,
+                "body": rc.body,
+                "diff_hunk": rc.diff_hunk,
+                "line": getattr(rc, "line", None),
+                "in_reply_to_id": getattr(rc, "in_reply_to_id", None),
+            }
+            review_comments_by_id.setdefault(rid, []).append(comment_data)
+
+        for review in self._pr.get_reviews():
+            reviews.append(
+                {
+                    "reviewer": review.user.login if review.user else "unknown",
+                    "state": review.state,
+                    "body": review.body or "",
+                    "submitted_at": (
+                        review.submitted_at.isoformat()
+                        if review.submitted_at
+                        else ""
+                    ),
+                    "comments": review_comments_by_id.get(review.id, []),
+                }
+            )
+
+        return reviews
+
     # ------------------------------------------------------------------
     # Write helpers
     # ------------------------------------------------------------------

@@ -120,6 +120,146 @@ class TestGetLanguages:
 
 
 # ---------------------------------------------------------------------------
+# Past reviews
+# ---------------------------------------------------------------------------
+
+class TestGetPastReviews:
+    def test_returns_reviews_with_comments(self):
+        client, mock_pr = _make_client()
+
+        # Set up a review
+        review = mock.MagicMock()
+        review.id = 101
+        review.user.login = "bob"
+        review.state = "CHANGES_REQUESTED"
+        review.body = "Please fix the typo."
+        review.submitted_at = datetime(2025, 3, 15, 10, 0, 0)
+        mock_pr.get_reviews.return_value = [review]
+
+        # Set up review comments linked to that review
+        rc = mock.MagicMock()
+        rc.pull_request_review_id = 101
+        rc.path = "src/main.py"
+        rc.body = "Typo on this line"
+        rc.diff_hunk = "@@ -1,3 +1,3 @@"
+        rc.line = 5
+        rc.in_reply_to_id = None
+        mock_pr.get_review_comments.return_value = [rc]
+
+        reviews = client.get_past_reviews()
+        assert len(reviews) == 1
+        assert reviews[0]["reviewer"] == "bob"
+        assert reviews[0]["state"] == "CHANGES_REQUESTED"
+        assert reviews[0]["body"] == "Please fix the typo."
+        assert "2025-03-15" in reviews[0]["submitted_at"]
+        assert len(reviews[0]["comments"]) == 1
+        assert reviews[0]["comments"][0]["path"] == "src/main.py"
+        assert reviews[0]["comments"][0]["body"] == "Typo on this line"
+
+    def test_review_without_comments(self):
+        client, mock_pr = _make_client()
+
+        review = mock.MagicMock()
+        review.id = 200
+        review.user.login = "alice"
+        review.state = "APPROVED"
+        review.body = "LGTM"
+        review.submitted_at = datetime(2025, 4, 1)
+        mock_pr.get_reviews.return_value = [review]
+        mock_pr.get_review_comments.return_value = []
+
+        reviews = client.get_past_reviews()
+        assert len(reviews) == 1
+        assert reviews[0]["reviewer"] == "alice"
+        assert reviews[0]["state"] == "APPROVED"
+        assert reviews[0]["comments"] == []
+
+    def test_empty_reviews(self):
+        client, mock_pr = _make_client()
+        mock_pr.get_reviews.return_value = []
+        mock_pr.get_review_comments.return_value = []
+
+        reviews = client.get_past_reviews()
+        assert reviews == []
+
+    def test_comment_without_review_id_skipped(self):
+        client, mock_pr = _make_client()
+
+        review = mock.MagicMock()
+        review.id = 300
+        review.user.login = "carol"
+        review.state = "COMMENTED"
+        review.body = ""
+        review.submitted_at = None
+        mock_pr.get_reviews.return_value = [review]
+
+        # Comment with no review id should be skipped
+        rc = mock.MagicMock()
+        rc.pull_request_review_id = None
+        rc.path = "README.md"
+        rc.body = "orphan comment"
+        rc.diff_hunk = ""
+        rc.line = None
+        rc.in_reply_to_id = None
+        mock_pr.get_review_comments.return_value = [rc]
+
+        reviews = client.get_past_reviews()
+        assert len(reviews) == 1
+        assert reviews[0]["comments"] == []
+        assert reviews[0]["submitted_at"] == ""
+
+    def test_multiple_reviews_multiple_comments(self):
+        client, mock_pr = _make_client()
+
+        r1 = mock.MagicMock()
+        r1.id = 10
+        r1.user.login = "alice"
+        r1.state = "COMMENTED"
+        r1.body = ""
+        r1.submitted_at = datetime(2025, 1, 1)
+
+        r2 = mock.MagicMock()
+        r2.id = 20
+        r2.user.login = "bob"
+        r2.state = "CHANGES_REQUESTED"
+        r2.body = "Needs work"
+        r2.submitted_at = datetime(2025, 1, 2)
+
+        mock_pr.get_reviews.return_value = [r1, r2]
+
+        rc1 = mock.MagicMock()
+        rc1.pull_request_review_id = 10
+        rc1.path = "a.py"
+        rc1.body = "nit"
+        rc1.diff_hunk = "@@"
+        rc1.line = 1
+        rc1.in_reply_to_id = None
+
+        rc2 = mock.MagicMock()
+        rc2.pull_request_review_id = 20
+        rc2.path = "b.py"
+        rc2.body = "bug here"
+        rc2.diff_hunk = "@@"
+        rc2.line = 10
+        rc2.in_reply_to_id = None
+
+        rc3 = mock.MagicMock()
+        rc3.pull_request_review_id = 20
+        rc3.path = "b.py"
+        rc3.body = "also here"
+        rc3.diff_hunk = "@@"
+        rc3.line = 15
+        rc3.in_reply_to_id = None
+
+        mock_pr.get_review_comments.return_value = [rc1, rc2, rc3]
+
+        reviews = client.get_past_reviews()
+        assert len(reviews) == 2
+        assert len(reviews[0]["comments"]) == 1
+        assert len(reviews[1]["comments"]) == 2
+
+
+# ---------------------------------------------------------------------------
 # Write helpers
 # ---------------------------------------------------------------------------
 

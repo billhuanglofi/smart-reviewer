@@ -40,6 +40,7 @@ class ReviewConfig:
     require_security_review: bool = True
     require_effort_estimation: bool = True
     publish_output: bool = True
+    include_past_reviews: bool = True
 
     @classmethod
     def from_env(cls) -> ReviewConfig:
@@ -70,4 +71,7 @@ class ReviewConfig:
                 "REQUIRE_EFFORT_ESTIMATION", default=True
             ),
             publish_output=_env_bool("PUBLISH_OUTPUT", default=True),
+            include_past_reviews=_env_bool(
+                "INCLUDE_PAST_REVIEWS", default=True
+            ),
         )

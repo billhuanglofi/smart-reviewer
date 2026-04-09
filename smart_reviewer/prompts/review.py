@@ -15,6 +15,18 @@ Hunks are preceded by `@@ -<old_start>,<old_count> +<new_start>,<new_count> @@`.
 Line numbers are relative to the **new** version of the file when referencing \
 added/changed code.
 
+## Past reviews
+When past reviews and review comments are provided, treat them as important \
+context. Previous reviewers may have pointed out issues, requested changes, \
+or left suggestions. Learn from their feedback:
+- Do NOT repeat issues that have already been raised and are still valid.
+- If a past comment requested a change and the diff shows it was addressed, \
+acknowledge that.
+- If a past comment requested a change that was NOT addressed in the current \
+diff, flag it as an unresolved concern.
+- Incorporate the tone and priorities expressed by past reviewers into your \
+own review.
+
 ## Instructions
 1. Identify the most critical issues in the PR (bugs, logic errors, race \
 conditions, data loss, etc.).
@@ -41,6 +53,27 @@ Branch: {{ branch }}
 {% if description -%}
 PR Description:
 {{ description }}
+{% endif %}
+
+{%- if past_reviews %}
+## Past reviews
+The following reviews and inline comments have been submitted on this PR.
+Use them as context — avoid duplicating already-raised issues and flag any
+unresolved concerns.
+
+{% for review in past_reviews -%}
+### Review by {{ review.reviewer }} ({{ review.state }}){% if review.submitted_at %} on {{ review.submitted_at }}{% endif %}
+
+{% if review.body -%}
+{{ review.body }}
+{% endif -%}
+{% if review.comments -%}
+Inline comments:
+{% for c in review.comments -%}
+- **{{ c.path }}**{% if c.line %} (line {{ c.line }}){% endif %}: {{ c.body }}
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
 {% endif %}
 
 {%- if extra_instructions %}
