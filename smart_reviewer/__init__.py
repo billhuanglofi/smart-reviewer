@@ -1,3 +1,3 @@
-"""Smart Reviewer - AI-powered PR review GitHub Action."""
+"""Smart Reviewer - AI-powered PR review CLI tool."""
 
 __version__ = "0.1.0"
